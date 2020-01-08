@@ -10,38 +10,42 @@ import UIKit
 
 public class CacheKey: NSObject{
     
-    private(set) var id: String
+    private(set) var path: String
     private var fileExtension: String?
     
-    public init(id: String, size: CGSize? = nil) {
-        self.id = id
+    public init(path: String, size: CGSize? = nil) {
+        self.path = path
         if let size = size {
-            self.id.append("-\(size.width)-\(size.height)")
+            self.path.append("-\(size.width)-\(size.height)")
+        }
+        let comps = path.components(separatedBy: ".")
+        if comps.count > 1 {
+            fileExtension = comps.last
         }
         super.init()
     }
     
     public init(url: URL) {
-        self.id = CacheKey.keyId(for: url)
+        self.path = CacheKey.path(for: url)
         self.fileExtension = url.pathExtension
     }
     
     public override func isEqual(_ object: Any?) -> Bool {
-        return self.id == (object as? CacheKey)?.id
+        return self.path == (object as? CacheKey)?.path
     }
     
     var filename: String {
-        if let ext = fileExtension {
-            return id.appending(".\(ext)")
+        if let ext = fileExtension, !ext.isEmpty {
+            return path.appending(".\(ext)")
         }
-        return id.appending(".jpeg")
+        return path.appending(".jpeg")
     }
     
 }
 
 extension CacheKey {
     
-    static func keyId(for url: URL) -> String {
+    static func path(for url: URL) -> String {
         var id = url.path.replacingOccurrences(of: "/", with: "-")
         id = id.replacingOccurrences(of: ".", with: "-")
         return id.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
