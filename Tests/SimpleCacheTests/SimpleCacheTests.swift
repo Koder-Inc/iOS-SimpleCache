@@ -9,6 +9,15 @@ struct SampleEncodable: Codable, Equatable, SimplyCacheIdentifiable {
     }
 }
 
+struct OrderedEncodable: Codable, Equatable, SimplyCacheIdentifiable {
+    let order: Int
+    
+    var cacheItemId: String {
+        return String(order)
+    }
+}
+
+
 final class SimpleCacheTests: XCTestCase {
     
     // MARK: - Image Cache Tests
@@ -153,6 +162,36 @@ final class SimpleCacheTests: XCTestCase {
         XCTAssertEqual(samples, retrieved)
     }
     
+    func testComplexOrdering() {
+        var loaded: [OrderedEncodable] = []
+        for i in 1...10 {
+            loaded.append(OrderedEncodable(order: i))
+        }
+        let path = "samples/\(UUID().uuidString).json"
+        SimpleCache.append(loaded, for: path)
+        let check1 = SimpleCache.get(for: path, as: [OrderedEncodable].self)
+        XCTAssertEqual(check1, loaded)
+        SimpleCache.append([OrderedEncodable(order: 11)], for:  path)
+        SimpleCache.insert([OrderedEncodable(order: 0)].reversed(), for:  path)
+        SimpleCache.insert([OrderedEncodable(order: -1), OrderedEncodable(order: -2), OrderedEncodable(order: -3)].reversed(), for:  path)
+        let check2 = SimpleCache.get(for: path, as: [OrderedEncodable].self)
+        var verification: [OrderedEncodable] = []
+        for i in -3...11 {
+            verification.append(OrderedEncodable(order: i))
+        }
+        XCTAssertEqual(verification, check2)
+    }
+    
+    func testDeleteDirectory() {
+        let path = "samples/\(UUID().uuidString).json"
+        let samples = getSampleList()
+        SimpleCache.insert(samples, for: path)
+        let check1 = SimpleCache.get(for: path, as: [SampleEncodable].self)
+        XCTAssertEqual(check1, samples)
+        XCTAssert(SimpleCache.removeAll(in: path))
+        XCTAssert(SimpleCache.get(for: path, as: [SampleEncodable].self)?.isEmpty ?? true)
+    }
+    
     private func getSampleList(count: Int = 1000) -> [SampleEncodable] {
         return [Bool](repeating: true, count: count).map { _ in UUID() }.map { SampleEncodable(id: $0) }
     }
@@ -170,7 +209,8 @@ final class SimpleCacheTests: XCTestCase {
         ("testDeleteCodable", testDeleteCodable),
         ("testReplaceCodable", testReplaceCodable),
         ("testEmptyInsert", testEmptyInsert),
-        ("testEmptyAdd", testEmptyAdd)
+        ("testEmptyAdd", testEmptyAdd),
+        ("testComplexOrdering", testComplexOrdering)
     ]
 }
 

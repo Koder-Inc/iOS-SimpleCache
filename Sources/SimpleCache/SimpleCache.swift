@@ -13,12 +13,12 @@ public enum CacheLevel: Int {
 
 open class SimpleCache {
     
-    private static var shared = SimpleCache()
-    private var memoryCache = NSCache<CacheKey, UIImage>()
-    private lazy var fileManager = FileManager.default
-    private lazy var diskCacheUrl = getDiskCacheURL()
-    private lazy var encoder = JSONEncoder()
-    private lazy var decoder = JSONDecoder()
+    internal static var shared = SimpleCache()
+    internal var memoryCache = NSCache<CacheKey, UIImage>()
+    internal lazy var fileManager = FileManager.default
+    internal lazy var diskCacheUrl = getDiskCacheURL()
+    internal lazy var encoder = JSONEncoder()
+    internal lazy var decoder = JSONDecoder()
 
     
     func save(image: UIImage, for key: CacheKey, level: CacheLevel = .disk) {
@@ -128,6 +128,15 @@ open class SimpleCache {
         }
     }
     
+    func removeAll(at url: URL) -> Bool {
+        do {
+            try fileManager.removeItem(at: url)
+            return true
+        } catch {
+            return false
+        }
+    }
+    
 }
 
 extension SimpleCache {
@@ -157,6 +166,8 @@ extension SimpleCache {
     private func saveDataToDisk(data: Data, for key: CacheKey) throws {
         let url = fileUrl(for: key)
         try? fileManager.removeItem(at: url)
+        let directory = url.path.replacingOccurrences(of: url.lastPathComponent, with: "")
+        try fileManager.createDirectory(atPath: directory, withIntermediateDirectories: true, attributes: nil)
         fileManager.createFile(atPath: url.path, contents: nil, attributes: nil)
         try data.write(to: url)
     }
@@ -172,78 +183,5 @@ extension SimpleCache {
     private func fileUrl(for key: CacheKey) -> URL {
         return diskCacheUrl.appendingPathComponent(key.filename)
     }
-    
-}
-
-extension SimpleCache {
-    
-    public static func save(image: UIImage, for key: CacheKey, level: CacheLevel = .disk) {
-        shared.save(image: image, for: key)
-    }
-    
-    public static func object(for key: CacheKey) -> UIImage? {
-        return shared.object(for: key)
-    }
-    
-    public static func save(data: Data, for key: CacheKey) {
-        shared.save(data: data, for: key)
-    }
-    
-    @discardableResult
-    public static func downloadImage(from url: URL, completion: ((_ image: UIImage?) -> Void)?) -> URLSessionDataTask {
-        let task = URLSession.shared.dataTask(with: url, completionHandler: { data, _, _ in
-            guard let imageData = data, let image = UIImage(data: imageData) else {
-                return
-            }
-            let key = CacheKey(url: url)
-            save(image: image, for: key)
-            completion?(image)
-            })
-        task.resume()
-        return task
-    }
-    
-    @discardableResult
-    public static func save<T: Codable>(_ codable: T, for path: String) -> Bool {
-        let key = CacheKey(path: path)
-        return shared.save(codable, for: key)
-    }
-    
-    @discardableResult
-    public static func save<T: Codable>(_ codables: [T], for path: String) -> Bool {
-        let key = CacheKey(path: path)
-        return shared.save(codables, for: key)
-    }
-    
-    @discardableResult
-    public static func insert<T: Codable>(_ codables: [T], for path: String) -> Bool {
-        let key = CacheKey(path: path)
-        return shared.insert(codables, for: key)
-    }
-    
-    @discardableResult
-    public static func append<T: Codable>(_ codables: [T], for path: String) -> Bool {
-        let key = CacheKey(path: path)
-        return shared.append(codables, for: key)
-    }
-    
-    @discardableResult
-    public static func remove<T: SimplyCacheable>(_ itemId: String, of type: T.Type, for path: String) -> Bool {
-        let key = CacheKey(path: path)
-        return shared.remove(itemId, with: type, for: key)
-    }
-    
-    @discardableResult
-    public static func replace<T: SimplyCacheable>(_ itemId: String, with newItem: T, for path: String) -> Bool {
-        let key = CacheKey(path: path)
-        return shared.replace(itemId, with: newItem, for: key)
-    }
-    
-    @discardableResult
-    public static func get<T: Codable>(for path: String, as type: T.Type) -> T? {
-        let key = CacheKey(path: path)
-        return shared.get(for: key, as: type)
-    }
-
     
 }

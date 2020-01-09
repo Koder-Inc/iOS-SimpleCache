@@ -18,9 +18,10 @@ public class CacheKey: NSObject{
         if let size = size {
             self.path.append("-\(size.width)-\(size.height)")
         }
-        let comps = path.components(separatedBy: ".")
+        var comps = path.components(separatedBy: ".")
         if comps.count > 1 {
-            fileExtension = comps.last
+            fileExtension = comps.removeLast()
+            self.path = comps.joined()
         }
         super.init()
     }
