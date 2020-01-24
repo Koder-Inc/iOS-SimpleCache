@@ -6,34 +6,11 @@
 //
 
 import Foundation
-import UIKit
 
 extension SimpleCache {
     
-    public static func save(image: UIImage, for key: CacheKey, level: CacheLevel = .disk) {
-        shared.save(image: image, for: key)
-    }
-    
-    public static func object(for key: CacheKey) -> UIImage? {
-        return shared.object(for: key)
-    }
-    
     public static func save(data: Data, for key: CacheKey) {
         shared.save(data: data, for: key)
-    }
-    
-    @discardableResult
-    public static func downloadImage(from url: URL, completion: ((_ image: UIImage?) -> Void)?) -> URLSessionDataTask {
-        let task = URLSession.shared.dataTask(with: url, completionHandler: { data, _, _ in
-            guard let imageData = data, let image = UIImage(data: imageData) else {
-                return
-            }
-            let key = CacheKey(url: url)
-            save(image: image, for: key)
-            completion?(image)
-            })
-        task.resume()
-        return task
     }
     
     @discardableResult
@@ -86,9 +63,42 @@ extension SimpleCache {
         return shared.decoder
     }
     
+    @discardableResult
     public static func removeAll(in path: String) -> Bool {
         let url = shared.diskCacheUrl.appendingPathComponent(path)
         return shared.removeAll(at: url)
     }
     
 }
+
+// MARK: -
+#if os(iOS)
+import UIKit
+
+extension SimpleCache {
+    
+    // MARK: iOS Specific Functions
+    public static func save(image: UIImage, for key: CacheKey, level: CacheLevel = .disk) {
+        shared.save(image: image, for: key)
+    }
+    
+    public static func object(for key: CacheKey) -> UIImage? {
+        return shared.object(for: key)
+    }
+    
+    @discardableResult
+    public static func downloadImage(from url: URL, completion: ((_ image: UIImage?) -> Void)?) -> URLSessionDataTask {
+        let task = URLSession.shared.dataTask(with: url, completionHandler: { data, _, _ in
+            guard let imageData = data, let image = UIImage(data: imageData) else {
+                return
+            }
+            let key = CacheKey(url: url)
+            save(image: image, for: key)
+            completion?(image)
+        })
+        task.resume()
+        return task
+    }
+    
+}
+#endif

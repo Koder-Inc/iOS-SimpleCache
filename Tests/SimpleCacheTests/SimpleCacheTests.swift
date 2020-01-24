@@ -210,7 +210,8 @@ final class SimpleCacheTests: XCTestCase {
         ("testReplaceCodable", testReplaceCodable),
         ("testEmptyInsert", testEmptyInsert),
         ("testEmptyAdd", testEmptyAdd),
-        ("testComplexOrdering", testComplexOrdering)
+        ("testComplexOrdering", testComplexOrdering),
+        ("testDeleteDirectory", testDeleteDirectory)
     ]
 }
 

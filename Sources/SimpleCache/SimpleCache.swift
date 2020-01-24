@@ -1,5 +1,4 @@
 import Foundation
-import UIKit
 
 public typealias SimplyCacheable = Codable & SimplyCacheIdentifiable
 
@@ -14,19 +13,13 @@ public enum CacheLevel: Int {
 open class SimpleCache {
     
     internal static var shared = SimpleCache()
+    #if os(iOS)
     internal var memoryCache = NSCache<CacheKey, UIImage>()
+    #endif
     internal lazy var fileManager = FileManager.default
     internal lazy var diskCacheUrl = getDiskCacheURL()
     internal lazy var encoder = JSONEncoder()
     internal lazy var decoder = JSONDecoder()
-
-    
-    func save(image: UIImage, for key: CacheKey, level: CacheLevel = .disk) {
-        memoryCache.setObject(image, forKey: key)
-        if level.rawValue >= CacheLevel.disk.rawValue {
-            saveImageToDisk(image: image, for: key)
-        }
-    }
     
     @discardableResult
     func save(data: Data, for key: CacheKey) -> Bool {
@@ -36,16 +29,6 @@ open class SimpleCache {
         } catch {
             return false
         }
-    }
-    
-    func object(for key: CacheKey) -> UIImage? {
-        if let i = memoryCache.object(forKey: key) {
-            return i
-        }
-        if let i = getImageFromDisk(for: key) {
-            return i
-        }
-        return nil
     }
     
     @discardableResult
@@ -150,6 +133,46 @@ extension SimpleCache {
         }
     }
     
+    private func saveDataToDisk(data: Data, for key: CacheKey) throws {
+        let url = fileUrl(for: key)
+        try? fileManager.removeItem(at: url)
+        let directory = url.path.replacingOccurrences(of: url.lastPathComponent, with: "")
+        try fileManager.createDirectory(atPath: directory, withIntermediateDirectories: true, attributes: nil)
+        fileManager.createFile(atPath: url.path, contents: nil, attributes: nil)
+        try data.write(to: url)
+    }
+    
+    private func fileUrl(for key: CacheKey) -> URL {
+        return diskCacheUrl.appendingPathComponent(key.filename)
+    }
+    
+}
+
+// MARK: -
+#if os(iOS)
+import UIKit
+
+extension SimpleCache {
+    
+    //MARK: iOS Specific Functions
+    
+    func save(image: UIImage, for key: CacheKey, level: CacheLevel = .disk) {
+        memoryCache.setObject(image, forKey: key)
+        if level.rawValue >= CacheLevel.disk.rawValue {
+            saveImageToDisk(image: image, for: key)
+        }
+    }
+    
+    func object(for key: CacheKey) -> UIImage? {
+        if let i = memoryCache.object(forKey: key) {
+            return i
+        }
+        if let i = getImageFromDisk(for: key) {
+            return i
+        }
+        return nil
+    }
+    
     @discardableResult
     private func saveImageToDisk(image: UIImage, for key: CacheKey) -> Bool {
         guard let data = image.jpegData(compressionQuality: 1.0) else {
@@ -163,15 +186,6 @@ extension SimpleCache {
         }
     }
     
-    private func saveDataToDisk(data: Data, for key: CacheKey) throws {
-        let url = fileUrl(for: key)
-        try? fileManager.removeItem(at: url)
-        let directory = url.path.replacingOccurrences(of: url.lastPathComponent, with: "")
-        try fileManager.createDirectory(atPath: directory, withIntermediateDirectories: true, attributes: nil)
-        fileManager.createFile(atPath: url.path, contents: nil, attributes: nil)
-        try data.write(to: url)
-    }
-    
     private func getImageFromDisk(for key: CacheKey) -> UIImage? {
         guard let data = try? Data(contentsOf: fileUrl(for: key)),
             let image = UIImage(data: data) else {
@@ -180,8 +194,5 @@ extension SimpleCache {
         return image
     }
     
-    private func fileUrl(for key: CacheKey) -> URL {
-        return diskCacheUrl.appendingPathComponent(key.filename)
-    }
-    
 }
+#endif
