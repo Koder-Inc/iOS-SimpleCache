@@ -28,7 +28,7 @@ public class CacheKey: NSObject{
     
     public init(url: URL) {
         self.path = CacheKey.path(for: url)
-        self.fileExtension = url.pathExtension
+        self.fileExtension = url.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
     }
     
     public override func isEqual(_ object: Any?) -> Bool {

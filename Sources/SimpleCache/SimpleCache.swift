@@ -129,7 +129,7 @@ extension SimpleCache {
             let directory = try self.fileManager.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             return directory.appendingPathComponent("SimpleCache")
         } catch {
-            fatalError("Could not find cache directory")
+            preconditionFailure("Could not find cache directory")
         }
     }
     
