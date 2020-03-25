@@ -15,32 +15,32 @@ extension SimpleCache {
     
     public static func save<T: Codable>(_ codable: T, for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        shared.save(codable, for: key, completion)
+        shared.save(codable, for: key, completion: completion)
     }
     
     public static func save<T: Codable>(_ codables: [T], for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        shared.save(codables, for: key, completion)
+        shared.save(codables, for: key, completion: completion)
     }
     
     public static func insert<T: Codable>(_ codables: [T], for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        shared.insert(codables, for: key, completion)
+        shared.insert(codables, for: key, completion: completion)
     }
     
     public static func append<T: Codable>(_ codables: [T], for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        shared.append(codables, for: key, completion)
+        shared.append(codables, for: key, completion: completion)
     }
     
     public static func remove<T: SimplyCacheable>(_ itemId: String, of type: T.Type, for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        shared.remove(itemId, with: type, for: key, completion)
+        shared.remove(itemId, with: type, for: key, completion: completion)
     }
     
     public static func replace<T: SimplyCacheable>(_ itemId: String, with newItem: T, for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        shared.replace(itemId, with: newItem, for: key, completion)
+        shared.replace(itemId, with: newItem, for: key, completion: completion)
     }
     
     public static func get<T: Codable>(for path: String, as type: T.Type) -> T? {
@@ -75,8 +75,8 @@ extension SimpleCache {
         shared.save(image: image, for: key)
     }
     
-    public static func object(for key: CacheKey) -> UIImage? {
-        return shared.object(for: key)
+    public static func object(for key: CacheKey, completion: @escaping (UIImage?) -> Void) {
+        shared.object(for: key, completion: completion)
     }
     
     @discardableResult
