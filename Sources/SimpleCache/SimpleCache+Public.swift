@@ -79,6 +79,10 @@ extension SimpleCache {
         shared.object(for: key, completion: completion)
     }
     
+    public static func object(for key: CacheKey) -> UIImage? {
+        return shared.object(for: key)
+    }
+    
     @discardableResult
     public static func downloadImage(from url: URL, completion: ((_ image: UIImage?) -> Void)?) -> URLSessionDataTask {
         let task = URLSession.shared.dataTask(with: url, completionHandler: { data, _, _ in

@@ -184,6 +184,13 @@ extension SimpleCache {
         getImageFromDisk(for: key, completion: completion)
     }
     
+    func object(for key: CacheKey) -> UIImage? {
+        if let image = memoryCache.object(forKey: key) {
+            return image
+        }
+        return getImageFromDisk(for: key)
+    }
+    
     private func saveImageToDisk(image: UIImage, for key: CacheKey, completion: ((Bool) -> Void)? = nil) {
         guard let data = image.jpegData(compressionQuality: 1.0) else {
             completion?(false)
@@ -207,6 +214,13 @@ extension SimpleCache {
                 completion(image)
             }
         }
+    }
+    
+    private func getImageFromDisk(for key: CacheKey) -> UIImage? {
+        guard let data = try? Data(contentsOf: self.fileUrl(for: key)), let image = UIImage(data: data) else {
+            return nil
+        }
+        return image
     }
 }
 #endif
