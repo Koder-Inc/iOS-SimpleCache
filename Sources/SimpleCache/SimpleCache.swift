@@ -21,39 +21,35 @@ open class SimpleCache {
     internal lazy var encoder = JSONEncoder()
     internal lazy var decoder = JSONDecoder()
     
-    @discardableResult
-    func save(data: Data, for key: CacheKey) -> Bool {
-        do {
-            try saveDataToDisk(data: data, for: key)
-            return true
-        } catch {
-            return false
+    func save(data: Data, for key: CacheKey, completion: ((Bool) -> Void)? = nil) {
+        saveDataToDisk(data: data, for: key) { error in
+            completion?(error == nil)
         }
     }
     
-    @discardableResult
-    func save<T: Codable>(_ codable: T, for key: CacheKey) -> Bool {
+    func save<T: Codable>(_ codable: T, for key: CacheKey, completion: @escaping (Bool) -> Void) {
         do {
             let data = try encoder.encode(codable)
-            try saveDataToDisk(data: data, for: key)
-            return true
+            saveDataToDisk(data: data, for: key) { error in
+                completion(error == nil)
+            }
         } catch {
-            return false
+            completion(false)
         }
     }
     
-    @discardableResult
-    func save<T: Codable>(_ codables: [T], for key: CacheKey) -> Bool {
+    func save<T: Codable>(_ codables: [T], for key: CacheKey, completion: @escaping (Bool) -> Void) {
         do {
             let data = try encoder.encode(codables)
-            try saveDataToDisk(data: data, for: key)
-            return true
+            saveDataToDisk(data: data, for: key) { error in
+                completion(error == nil)
+            }
         } catch {
-            return false
+            completion(false)
         }
     }
     
-    func append<T: Codable>(_ codables: [T], for key: CacheKey) -> Bool {
+    func append<T: Codable>(_ codables: [T], for key: CacheKey, completion: @escaping (Bool) -> Void) {
         var existingData: [T] = []
         if let data = get(for: key, as: [T].self) {
             existingData = data
@@ -61,14 +57,15 @@ open class SimpleCache {
         existingData.append(contentsOf: codables)
         do {
             let data = try encoder.encode(existingData)
-            try saveDataToDisk(data: data, for: key)
-            return true
+            saveDataToDisk(data: data, for: key) { error in
+                completion(error == nil)
+            }
         } catch {
-            return false
+            completion(false)
         }
     }
     
-    func insert<T: Codable>(_ codables: [T], for key: CacheKey) -> Bool {
+    func insert<T: Codable>(_ codables: [T], for key: CacheKey, completion: @escaping (Bool) -> Void) {
         var existingData: [T] = []
         if let data = get(for: key, as: [T].self) {
             existingData = data
@@ -76,30 +73,36 @@ open class SimpleCache {
         existingData.insert(contentsOf: codables, at: 0)
         do {
             let data = try encoder.encode(existingData)
-            try saveDataToDisk(data: data, for: key)
-            return true
+            saveDataToDisk(data: data, for: key) { error in
+                completion(error == nil)
+            }
         } catch {
-            return false
+            completion(false)
         }
     }
     
-    func remove<T: SimplyCacheable>(_ itemId: String, with type: T.Type, for key: CacheKey) -> Bool {
+    func remove<T: SimplyCacheable>(_ itemId: String, with type: T.Type, for key: CacheKey, completion: @escaping (Bool) -> Void) {
         guard var existingData = get(for: key, as: [T].self) else {
-            return false
+            completion(false)
+            return
         }
         existingData.removeAll(where: {$0.cacheItemId == itemId})
-        return save(existingData, for: key)
+        save(existingData, for: key, completion: completion)
     }
     
-    func replace<T: SimplyCacheable>(_ itemId: String, with newItem: T, for key: CacheKey) -> Bool  {
+    func replace<T: SimplyCacheable>(_ itemId: String, with newItem: T, for key: CacheKey, completion: @escaping (Bool) -> Void) {
         guard var existingData = get(for: key, as: [T].self) else {
-            return false
+            completion(false)
+            return
         }
-        guard let index = existingData.firstIndex(where: {$0.cacheItemId == itemId}) else { return false }
+        guard let index = existingData.firstIndex(where: {$0.cacheItemId == itemId}) else {
+            completion(false)
+            return
+        }
         existingData[index] = newItem
-        return save(existingData, for: key)
+        save(existingData, for: key, completion: completion)
     }
-        
+    
     func get<T: Codable>(for key: CacheKey, as type: T.Type) -> T? {
         let url = fileUrl(for: key)
         do {
@@ -133,19 +136,29 @@ extension SimpleCache {
         }
     }
     
-    private func saveDataToDisk(data: Data, for key: CacheKey) throws {
-        let url = fileUrl(for: key)
-        try? fileManager.removeItem(at: url)
-        let directory = url.path.replacingOccurrences(of: url.lastPathComponent, with: "")
-        try fileManager.createDirectory(atPath: directory, withIntermediateDirectories: true, attributes: nil)
-        fileManager.createFile(atPath: url.path, contents: nil, attributes: nil)
-        try data.write(to: url)
+    private func saveDataToDisk(data: Data, for key: CacheKey, completion: @escaping (Error?) -> Void) {
+        DispatchQueue.global(qos: .background).async {
+            do {
+                let url = self.fileUrl(for: key)
+                try? self.fileManager.removeItem(at: url)
+                let directory = url.path.replacingOccurrences(of: url.lastPathComponent, with: "")
+                try self.fileManager.createDirectory(atPath: directory, withIntermediateDirectories: true, attributes: nil)
+                self.fileManager.createFile(atPath: url.path, contents: nil, attributes: nil)
+                try data.write(to: url)
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(error)
+                }
+            }
+        }
     }
     
     private func fileUrl(for key: CacheKey) -> URL {
         return diskCacheUrl.appendingPathComponent(key.filename)
     }
-    
 }
 
 // MARK: -
@@ -163,36 +176,51 @@ extension SimpleCache {
         }
     }
     
-    func object(for key: CacheKey) -> UIImage? {
-        if let i = memoryCache.object(forKey: key) {
-            return i
+    func object(for key: CacheKey, completion: @escaping (UIImage?) -> Void) {
+        if let image = memoryCache.object(forKey: key) {
+            completion(image)
+            return
         }
-        if let i = getImageFromDisk(for: key) {
-            return i
-        }
-        return nil
+        getImageFromDisk(for: key, completion: completion)
     }
     
-    @discardableResult
-    private func saveImageToDisk(image: UIImage, for key: CacheKey) -> Bool {
-        guard let data = image.jpegData(compressionQuality: 1.0) else {
-            return false
+    func object(for key: CacheKey) -> UIImage? {
+        if let image = memoryCache.object(forKey: key) {
+            return image
         }
-        do {
-            try saveDataToDisk(data: data, for: key)
-            return true
-        } catch {
-            return false
+        return getImageFromDisk(for: key)
+    }
+    
+    private func saveImageToDisk(image: UIImage, for key: CacheKey, completion: ((Bool) -> Void)? = nil) {
+        guard let data = image.jpegData(compressionQuality: 1.0) else {
+            completion?(false)
+            return
+        }
+        saveDataToDisk(data: data, for: key) { error in
+            completion?(error == nil)
+        }
+    }
+    
+    private func getImageFromDisk(for key: CacheKey, completion: @escaping (UIImage?) -> Void) {
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            guard let fileURL = self?.fileUrl(for: key), let data = try? Data(contentsOf: fileURL),
+                let image = UIImage(data: data) else {
+                    DispatchQueue.main.async {
+                        completion(nil)
+                    }
+                    return
+            }
+            DispatchQueue.main.async {
+                completion(image)
+            }
         }
     }
     
     private func getImageFromDisk(for key: CacheKey) -> UIImage? {
-        guard let data = try? Data(contentsOf: fileUrl(for: key)),
-            let image = UIImage(data: data) else {
-                return nil
+        guard let data = try? Data(contentsOf: self.fileUrl(for: key)), let image = UIImage(data: data) else {
+            return nil
         }
         return image
     }
-    
 }
 #endif

@@ -13,43 +13,36 @@ extension SimpleCache {
         shared.save(data: data, for: key)
     }
     
-    @discardableResult
-    public static func save<T: Codable>(_ codable: T, for path: String) -> Bool {
+    public static func save<T: Codable>(_ codable: T, for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        return shared.save(codable, for: key)
+        shared.save(codable, for: key, completion: completion)
     }
     
-    @discardableResult
-    public static func save<T: Codable>(_ codables: [T], for path: String) -> Bool {
+    public static func save<T: Codable>(_ codables: [T], for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        return shared.save(codables, for: key)
+        shared.save(codables, for: key, completion: completion)
     }
     
-    @discardableResult
-    public static func insert<T: Codable>(_ codables: [T], for path: String) -> Bool {
+    public static func insert<T: Codable>(_ codables: [T], for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        return shared.insert(codables, for: key)
+        shared.insert(codables, for: key, completion: completion)
     }
     
-    @discardableResult
-    public static func append<T: Codable>(_ codables: [T], for path: String) -> Bool {
+    public static func append<T: Codable>(_ codables: [T], for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        return shared.append(codables, for: key)
+        shared.append(codables, for: key, completion: completion)
     }
     
-    @discardableResult
-    public static func remove<T: SimplyCacheable>(_ itemId: String, of type: T.Type, for path: String) -> Bool {
+    public static func remove<T: SimplyCacheable>(_ itemId: String, of type: T.Type, for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        return shared.remove(itemId, with: type, for: key)
+        shared.remove(itemId, with: type, for: key, completion: completion)
     }
     
-    @discardableResult
-    public static func replace<T: SimplyCacheable>(_ itemId: String, with newItem: T, for path: String) -> Bool {
+    public static func replace<T: SimplyCacheable>(_ itemId: String, with newItem: T, for path: String, completion: @escaping (Bool) -> Void) {
         let key = CacheKey(path: path)
-        return shared.replace(itemId, with: newItem, for: key)
+        shared.replace(itemId, with: newItem, for: key, completion: completion)
     }
     
-    @discardableResult
     public static func get<T: Codable>(for path: String, as type: T.Type) -> T? {
         let key = CacheKey(path: path)
         return shared.get(for: key, as: type)
@@ -80,6 +73,10 @@ extension SimpleCache {
     // MARK: iOS Specific Functions
     public static func save(image: UIImage, for key: CacheKey, level: CacheLevel = .disk) {
         shared.save(image: image, for: key)
+    }
+    
+    public static func object(for key: CacheKey, completion: @escaping (UIImage?) -> Void) {
+        shared.object(for: key, completion: completion)
     }
     
     public static func object(for key: CacheKey) -> UIImage? {
