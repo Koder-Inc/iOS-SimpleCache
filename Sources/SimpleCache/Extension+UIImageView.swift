@@ -12,11 +12,9 @@ extension UIImageView {
         guard let url = url else { return }
         SimpleCache.object(for: key) { [weak self] image in
             if let cachedImage = image { // image is already cached
-                print("🎾 image is already cached")
                 self?.set(image: cachedImage, options: options)
             } else {
                 SimpleCache.downloadImage(from: url, presetKey: key) { image in
-                   print("🎾 image is downloaded and cached")
                     self?.set(image: image, options: options)
                 }
             }
