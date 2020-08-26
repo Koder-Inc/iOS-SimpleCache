@@ -28,7 +28,7 @@ public class CacheKey: NSObject{
     
     public init(url: URL) {
         self.path = CacheKey.path(for: url)
-        self.fileExtension = url.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
+        self.fileExtension = url.pathExtension.isEmpty ? "dat" : url.pathExtension
     }
     
     public override func isEqual(_ object: Any?) -> Bool {
@@ -47,8 +47,22 @@ public class CacheKey: NSObject{
 extension CacheKey {
     
     static func path(for url: URL) -> String {
-        var id = url.path.replacingOccurrences(of: "/", with: "-")
+        var structure = String()
+        if let host = url.host, !host.isEmpty {
+            structure.append("\(host)-")
+        }
+        if !url.path.isEmpty {
+            structure.append("\(url.path)-")
+        }
+        if let query = url.query, !query.isEmpty {
+            structure.append("\(query)-")
+        }
+        guard !structure.isEmpty else {
+            return UUID().uuidString
+        }
+        var id = structure.replacingOccurrences(of: "/", with: "-")
         id = id.replacingOccurrences(of: ".", with: "-")
+        id = id.replacingOccurrences(of: "--", with: "-")
         return id.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
     }
     
